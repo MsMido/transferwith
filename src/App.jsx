@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, X, Check, Key } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, X, Check } from 'lucide-react';
 import { db } from './firebase/firebase';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 
@@ -24,9 +24,15 @@ function App() {
   const [schedules, setSchedules] = useState([]);
   const [individualMembers, setIndividualMembers] = useState([]);
   
+  // 상태 관리: 일반 이동용 선택, 키 양도용 선택
   const [selectedMember, setSelectedMember] = useState(null);
+  const [keySenderMember, setKeySenderMember] = useState(null);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newScheduleTitle, setNewScheduleTitle] = useState('');
+
+  // 더블클릭/탭 감지용 ref
+  const lastTapRef = useRef({ id: null, time: 0 });
 
   const getStateDocRef = () => {
     const docId = activeTab === 'Working Day' ? 'workingDay' : 'weekend';
@@ -54,6 +60,7 @@ function App() {
     return () => unsubscribe();
   }, [activeTab]);
 
+  // 멤버 위치 이동 (탭 투 무브)
   const handleMoveMemberTo = (targetAreaType, targetScheduleId = null) => {
     if (!selectedMember) return;
     const memberData = selectedMember;
@@ -89,29 +96,28 @@ function App() {
       individualMembers: newIndividual 
     }, { merge: true });
 
-    setSelectedMember(null);
+    setSelectedManagerAndReset();
   };
 
-  // 🔑 안전한 키 양도 로직 (중복 증식 방지)
-  const handleKeyClick = (targetMemberId, e) => {
-    e.stopPropagation(); 
-    
-    if (!selectedMember) return;
-    const sourceMemberId = selectedMember.id;
+  const setSelectedManagerAndReset = () => {
+    setSelectedMember(null);
+    setKeySenderMember(null);
+  };
 
-    // 자기 자신의 키를 누른 경우는 무시
-    if (sourceMemberId === targetMemberId) return;
+  // 🔑 엄격하고 안전한 키 양도 로직 (증식 방지)
+  const handleTransferKeyTo = (targetMemberId) => {
+    if (!keySenderMember) return;
+    const sourceId = keySenderMember.id;
+    if (sourceId === targetMemberId) return;
 
-    // 모든 구역(대기풀, 스케줄, 개별구역)을 탐색하여 소스 멤버의 키를 1개 줄이고 타겟 멤버의 키를 1개 늘림
-    const updateKeys = (membersArray) => {
-      // 먼저 소스 멤버가 이 배열에 있는지 확인하고 키가 부족하면 중단
-      const sourceMember = membersArray.find(m => m.id === sourceMemberId);
-      const targetMember = membersArray.find(m => m.id === targetMemberId);
+    // 전체 배열을 돌며 소스에서 1개 감소, 타겟에서 1개 증가 (총 개수 불변)
+    const transferInArray = (arr) => {
+      const hasSource = arr.some(m => m.id === sourceId);
+      const hasTarget = arr.some(m => m.id === targetMemberId);
+      if (!hasSource && !hasTarget) return arr;
 
-      if (!sourceMember && !targetMember) return membersArray;
-
-      return membersArray.map(m => {
-        if (m.id === sourceMemberId) {
+      return arr.map(m => {
+        if (m.id === sourceId) {
           return { ...m, keyCount: Math.max(0, (m.keyCount || 0) - 1) };
         }
         if (m.id === targetMemberId) {
@@ -121,11 +127,11 @@ function App() {
       });
     };
 
-    let newPool = updateKeys(waitingPool);
-    let newIndividual = updateKeys(individualMembers);
-    let newSchedules = schedules.map(s => ({
+    const newPool = transferInArray(waitingPool);
+    const newIndividual = transferInArray(individualMembers);
+    const newSchedules = schedules.map(s => ({
       ...s,
-      members: updateKeys(s.members)
+      members: transferInArray(s.members)
     }));
 
     setDoc(getStateDocRef(), { 
@@ -134,7 +140,54 @@ function App() {
       individualMembers: newIndividual 
     }, { merge: true });
 
-    setSelectedMember(null); 
+    setSelectedManagerAndReset();
+  };
+
+  // 멤버 클릭 핸들러 (더블 탭 감지 및 모드 전환)
+  const handleMemberClick = (member, e) => {
+    e.stopPropagation();
+
+    const now = Date.now();
+    const isDoubleTap = lastTapRef.current.id === member.id && (now - lastTapRef.current.time < 300);
+    lastTapRef.current = { id: member.id, time: now };
+
+    // 만약 키가 있는 사람이면 더블 탭하거나 키 양도 모드 진입 가능
+    if (isDoubleTap && (member.keyCount || 0) > 0) {
+      setKeySenderMember(keySenderMember?.id === member.id ? null : member);
+      setSelectedMember(null);
+      return;
+    }
+
+    // 이미 키 양도 모드일 때 다른 사람을 누르면 그 사람에게 키 양도
+    if (keySenderMember) {
+      if (keySenderMember.id === member.id) {
+        setKeySenderMember(null); // 자기 자신을 누르면 취소
+      } else {
+        handleTransferKeyTo(member.id);
+      }
+      return;
+    }
+
+    // 일반 이동 모드
+    if (selectedMember?.id === member.id) {
+      setSelectedMember(null);
+    } else {
+      setSelectedMember(member);
+      setKeySenderMember(null);
+    }
+  };
+
+  // 키 아이콘 직접 클릭 시 (키 양도 모드 즉시 토글)
+  const handleKeyBadgeClick = (member, e) => {
+    e.stopPropagation();
+    if ((member.keyCount || 0) <= 0) return; // 키가 없으면 무시
+
+    if (keySenderMember?.id === member.id) {
+      setKeySenderMember(null);
+    } else {
+      setKeySenderMember(member);
+      setSelectedMember(null);
+    }
   };
 
   const handleCompleteSchedule = (scheduleId, title) => {
@@ -191,55 +244,44 @@ function App() {
 
   const renderMemberChip = (member) => {
     const isSelected = selectedMember?.id === member.id;
-    const isTargetForReceiveKey = selectedMember && !isSelected; // 다른 사람을 선택했을 때 키를 받을 수 있는 대상
+    const isKeySender = keySenderMember?.id === member.id;
+    const isKeyReceiverTarget = keySenderMember && !isKeySender;
     const keys = Array.from({ length: member.keyCount || 0 });
+
+    let borderStyle = 'bg-white border-slate-200 text-slate-700 hover:border-slate-300';
+    if (isSelected) {
+      borderStyle = 'bg-blue-600 text-white border-blue-700 ring-2 ring-blue-300 scale-105';
+    } else if (isKeySender) {
+      borderStyle = 'bg-amber-500 text-white border-amber-600 ring-2 ring-amber-300 scale-105';
+    } else if (isKeyReceiverTarget) {
+      borderStyle = 'bg-amber-50 border-amber-400 ring-2 ring-amber-200 animate-pulse';
+    }
 
     return (
       <div 
         key={member.id}
-        onClick={(e) => {
-          e.stopPropagation();
-          setSelectedMember(isSelected ? null : member);
-        }}
-        className={`flex items-center pl-2.5 pr-1.5 py-1 rounded-lg border shadow-sm cursor-pointer transition-all text-xs ${
-          isSelected 
-            ? 'bg-blue-600 text-white border-blue-700 ring-2 ring-blue-300 scale-105' 
-            : isTargetForReceiveKey
-              ? 'bg-amber-50/80 border-amber-300 hover:border-amber-400'
-              : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
-        }`}
+        onClick={(e) => handleMemberClick(member, e)}
+        className={`flex items-center pl-2.5 pr-1.5 py-1 rounded-lg border shadow-sm cursor-pointer transition-all text-xs ${borderStyle}`}
       >
         <span className="font-bold py-0.5">{member.name}</span>
         
-        {/* 키 표시 영역 */}
         <div className="flex gap-0.5 ml-1.5 items-center">
           {keys.map((_, idx) => (
             <span 
               key={idx} 
-              onClick={(e) => handleKeyClick(member.id, e)}
-              className={`px-1 py-0.5 rounded text-[10px] shadow-sm border transition-transform ${
-                isSelected 
-                  ? 'bg-blue-500 text-white border-blue-400' 
-                  : isTargetForReceiveKey
-                    ? 'bg-amber-200 text-amber-900 border-amber-400 animate-pulse scale-110' 
-                    : 'bg-amber-50 text-amber-800 border-amber-200'
+              onClick={(e) => handleKeyBadgeClick(member, e)}
+              className={`px-1 py-0.5 rounded text-[10px] shadow-sm border transition-transform cursor-pointer ${
+                isKeySender 
+                  ? 'bg-amber-600 text-white border-amber-400 scale-110' 
+                  : isSelected 
+                    ? 'bg-blue-500 text-white border-blue-400' 
+                    : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
               }`}
-              title={isTargetForReceiveKey ? "여기를 누르면 선택한 사람의 키가 이에게 양도됩니다!" : "차키"}
+              title="키를 누르거나 더블클릭하면 키 넘기기 모드가 켜집니다"
             >
               🔑
             </span>
           ))}
-
-          {/* 키가 없을 때도 다른 사람을 선택 중이면 키를 받을 수 있도록 빈 키 영역(또는 추가 버튼 형태) 제공 */}
-          {keys.length === 0 && isTargetForReceiveKey && (
-            <span 
-              onClick={(e) => handleKeyClick(member.id, e)}
-              className="ml-1 px-1.5 py-0.5 rounded text-[10px] bg-amber-100 text-amber-800 border border-dashed border-amber-400 animate-pulse font-bold"
-              title="여기를 누르면 키를 받습니다"
-            >
-              +🔑 받기
-            </span>
-          )}
         </div>
       </div>
     );
@@ -250,12 +292,26 @@ function App() {
   return (
     <div className={`min-h-screen ${mainBgColor} flex flex-col font-sans transition-colors duration-300 select-none`}>
       
+      {/* 안내 배너 (이동 모드) */}
       {selectedMember && (
         <div className="fixed top-12 left-0 right-0 bg-blue-600 text-white text-xs font-bold py-1.5 px-3 text-center z-30 shadow-md flex justify-center items-center gap-2 animate-bounce">
-          <span>🎯 [{selectedMember.name}] 이동할 장소 또는 🔑를 받을 사람을 터치하세요!</span>
+          <span>🎯 [{selectedMember.name}] 이동할 장소를 터치하세요!</span>
           <button 
-            onClick={() => setSelectedMember(null)}
+            onClick={setSelectedManagerAndReset}
             className="bg-blue-700 px-2 py-0.5 rounded text-[10px] hover:bg-blue-800"
+          >
+            취소
+          </button>
+        </div>
+      )}
+
+      {/* 안내 배너 (키 양도 모드) */}
+      {keySenderMember && (
+        <div className="fixed top-12 left-0 right-0 bg-amber-500 text-white text-xs font-bold py-1.5 px-3 text-center z-30 shadow-md flex justify-center items-center gap-2 animate-bounce">
+          <span>🔑 [{keySenderMember.name}]의 키를 받을 사람을 터치하세요!</span>
+          <button 
+            onClick={setSelectedManagerAndReset}
+            className="bg-amber-600 px-2 py-0.5 rounded text-[10px] hover:bg-amber-700"
           >
             취소
           </button>
