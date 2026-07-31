@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, X, Check } from 'lucide-react';
-import IndividualArea from './components/IndividualArea';
 import { db } from './firebase/firebase';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 
@@ -57,7 +56,7 @@ function App() {
 
   const handleMoveMemberTo = (targetAreaType, targetScheduleId = null) => {
     if (!selectedMember) return;
-    const memberData = selectedMember.member;
+    const memberData = selectedMember;
 
     let newPool = waitingPool.filter(m => m.id !== memberData.id);
     let newIndividual = individualMembers.filter(m => m.id !== memberData.id);
@@ -93,12 +92,15 @@ function App() {
     setSelectedMember(null);
   };
 
-  const handleKeyClick = (ownerId, e) => {
-    e.stopPropagation();
-    if (!selectedMember || selectedMember.member.id === ownerId) return;
+  // 🔑 키 양도 로직 수정
+  const handleKeyClick = (targetMemberId, e) => {
+    e.stopPropagation(); // 부모(칩 클릭) 이벤트 전파 차단
+    
+    if (!selectedMember) return;
+    const sourceMemberId = selectedMember.id;
 
-    const targetMemberId = ownerId;
-    const sourceMemberId = selectedMember.member.id;
+    // 자기 자신의 키를 누른 경우 양도 안 함
+    if (sourceMemberId === targetMemberId) return;
 
     const transferKey = (membersArray) => membersArray.map(m => {
       let newKeyCount = m.keyCount || 0;
@@ -112,7 +114,7 @@ function App() {
     const newIndividual = transferKey(individualMembers);
 
     setDoc(getStateDocRef(), { waitingPool: newPool, schedules: newSchedules, individualMembers: newIndividual }, { merge: true });
-    setSelectedMember(null);
+    setSelectedMember(null); // 양도 후 선택 해제
   };
 
   const handleCompleteSchedule = (scheduleId, title) => {
@@ -168,7 +170,7 @@ function App() {
   };
 
   const renderMemberChip = (member) => {
-    const isSelected = selectedMember?.member.id === member.id;
+    const isSelected = selectedMember?.id === member.id;
     const keys = Array.from({ length: member.keyCount || 0 });
 
     return (
@@ -176,7 +178,7 @@ function App() {
         key={member.id}
         onClick={(e) => {
           e.stopPropagation();
-          setSelectedMember(isSelected ? null : { member });
+          setSelectedMember(isSelected ? null : member);
         }}
         className={`flex items-center pl-2.5 pr-1.5 py-1 rounded-lg border shadow-sm cursor-pointer transition-all text-xs ${
           isSelected 
@@ -190,7 +192,7 @@ function App() {
             <span 
               key={idx} 
               onClick={(e) => handleKeyClick(member.id, e)}
-              className={`px-1 py-0.5 rounded text-[10px] shadow-sm border ${
+              className={`px-1 py-0.5 rounded text-[10px] shadow-sm border cursor-pointer hover:opacity-80 ${
                 isSelected ? 'bg-blue-500 text-white border-blue-400' : 'bg-amber-50 text-amber-800 border-amber-200'
               }`}
               title="키를 누르면 선택된 멤버에게 양도됩니다"
@@ -210,7 +212,7 @@ function App() {
       
       {selectedMember && (
         <div className="fixed top-12 left-0 right-0 bg-blue-600 text-white text-xs font-bold py-1.5 px-3 text-center z-30 shadow-md flex justify-center items-center gap-2 animate-bounce">
-          <span>🎯 [{selectedMember.member.name}] 이동할 장소를 터치하세요!</span>
+          <span>🎯 [{selectedMember.name}] 이동할 장소 또는 키를 받을 사람을 터치하세요!</span>
           <button 
             onClick={() => setSelectedMember(null)}
             className="bg-blue-700 px-2 py-0.5 rounded text-[10px] hover:bg-blue-800"
@@ -273,7 +275,7 @@ function App() {
           </button>
         </div>
 
-        {/* 스케줄 박스 목록 (간격 줄임) */}
+        {/* 스케줄 박스 목록 */}
         <div className="flex flex-col gap-4">
           {schedules.map((schedule) => {
             const members = schedule.members || [];
