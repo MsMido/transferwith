@@ -4,9 +4,6 @@ import IndividualArea from './components/IndividualArea';
 import { db } from './firebase/firebase';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 
-// ------------------------------------------------------------------
-// 🛠️ [수동 코딩 영역] 초기 멤버 및 차키 설정
-// ------------------------------------------------------------------
 const INITIAL_POOL = [
   { id: 1, name: '김명수', keyCount: 0 },
   { id: 2, name: '류혜미', keyCount: 0 },
@@ -20,9 +17,7 @@ const INITIAL_POOL = [
   { id: 10, name: '황종철', keyCount: 1 },
 ];
 
-const INITIAL_SCHEDULES = [
-
-];
+const INITIAL_SCHEDULES = [];
 
 function App() {
   const [activeTab, setActiveTab] = useState('Working Day');
@@ -30,9 +25,7 @@ function App() {
   const [schedules, setSchedules] = useState([]);
   const [individualMembers, setIndividualMembers] = useState([]);
   
-  // 탭 투 무브를 위한 현재 선택된 멤버 상태
   const [selectedMember, setSelectedMember] = useState(null);
-
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newScheduleTitle, setNewScheduleTitle] = useState('');
 
@@ -62,7 +55,6 @@ function App() {
     return () => unsubscribe();
   }, [activeTab]);
 
-  // 특정 위치로 멤버를 이동시키는 공통 함수
   const handleMoveMemberTo = (targetAreaType, targetScheduleId = null) => {
     if (!selectedMember) return;
     const memberData = selectedMember.member;
@@ -98,10 +90,9 @@ function App() {
       individualMembers: newIndividual 
     }, { merge: true });
 
-    setSelectedMember(null); // 이동 후 선택 해제
+    setSelectedMember(null);
   };
 
-  // 키 양도 기능
   const handleKeyClick = (ownerId, e) => {
     e.stopPropagation();
     if (!selectedMember || selectedMember.member.id === ownerId) return;
@@ -176,7 +167,6 @@ function App() {
     setIsModalOpen(false);
   };
 
-  // 렌더링용 멤버 칩 컴포넌트
   const renderMemberChip = (member) => {
     const isSelected = selectedMember?.member.id === member.id;
     const keys = Array.from({ length: member.keyCount || 0 });
@@ -188,19 +178,19 @@ function App() {
           e.stopPropagation();
           setSelectedMember(isSelected ? null : { member });
         }}
-        className={`flex items-center pl-3 pr-1.5 py-1 rounded-xl border shadow-sm cursor-pointer transition-all ${
+        className={`flex items-center pl-2.5 pr-1.5 py-1 rounded-lg border shadow-sm cursor-pointer transition-all text-xs ${
           isSelected 
             ? 'bg-blue-600 text-white border-blue-700 ring-2 ring-blue-300 scale-105' 
             : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
         }`}
       >
-        <span className="font-bold text-sm py-0.5">{member.name}</span>
-        <div className="flex gap-1 ml-2">
+        <span className="font-bold py-0.5">{member.name}</span>
+        <div className="flex gap-0.5 ml-1.5">
           {keys.map((_, idx) => (
             <span 
               key={idx} 
               onClick={(e) => handleKeyClick(member.id, e)}
-              className={`px-1 py-0.5 rounded-md text-xs shadow-sm border ${
+              className={`px-1 py-0.5 rounded text-[10px] shadow-sm border ${
                 isSelected ? 'bg-blue-500 text-white border-blue-400' : 'bg-amber-50 text-amber-800 border-amber-200'
               }`}
               title="키를 누르면 선택된 멤버에게 양도됩니다"
@@ -218,10 +208,9 @@ function App() {
   return (
     <div className={`min-h-screen ${mainBgColor} flex flex-col font-sans transition-colors duration-300 select-none`}>
       
-      {/* 상단 선택 안내 배너 */}
       {selectedMember && (
-        <div className="fixed top-14 left-0 right-0 bg-blue-600 text-white text-xs font-bold py-2 px-4 text-center z-30 shadow-md flex justify-center items-center gap-2 animate-bounce">
-          <span>🎯 [{selectedMember.member.name}] 이동할 장소(스케줄 또는 대기열)를 터치하세요!</span>
+        <div className="fixed top-12 left-0 right-0 bg-blue-600 text-white text-xs font-bold py-1.5 px-3 text-center z-30 shadow-md flex justify-center items-center gap-2 animate-bounce">
+          <span>🎯 [{selectedMember.member.name}] 이동할 장소를 터치하세요!</span>
           <button 
             onClick={() => setSelectedMember(null)}
             className="bg-blue-700 px-2 py-0.5 rounded text-[10px] hover:bg-blue-800"
@@ -231,43 +220,43 @@ function App() {
         </div>
       )}
 
-      <div className="w-full flex h-14 bg-white/80 backdrop-blur-sm shadow-sm sticky top-0 z-20">
+      <div className="w-full flex h-12 bg-white/90 backdrop-blur-sm shadow-sm sticky top-0 z-20">
         <button 
           onClick={() => setActiveTab('Working Day')}
-          className={`w-1/2 flex items-center justify-center font-bold text-base transition-colors ${activeTab === 'Working Day' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}>
+          className={`w-1/2 flex items-center justify-center font-bold text-sm transition-colors ${activeTab === 'Working Day' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}>
           Working Day
         </button>
         <button 
           onClick={() => setActiveTab('Weekend')}
-          className={`w-1/2 flex items-center justify-center font-bold text-base transition-colors ${activeTab === 'Weekend' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-blue-50 hover:text-slate-600'}`}>
+          className={`w-1/2 flex items-center justify-center font-bold text-sm transition-colors ${activeTab === 'Weekend' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-blue-50 hover:text-slate-600'}`}>
           Weekend
         </button>
       </div>
 
-      <main className="flex-1 w-full max-w-lg mx-auto p-4 flex flex-col gap-6 mb-44">
+      <main className="flex-1 w-full max-w-lg mx-auto p-3 flex flex-col gap-4 mb-36">
         
         {/* 개별 이동 구역 */}
-        <div className="flex justify-between items-center mt-2 gap-4">
+        <div className="flex justify-between items-center gap-3 mt-1">
           <div 
             onClick={() => selectedMember && handleMoveMemberTo('individual')}
-            className={`flex-1 bg-white rounded-xl p-3 shadow-sm border transition-all ${
+            className={`flex-1 bg-white rounded-xl p-2.5 shadow-sm border transition-all ${
               selectedMember ? 'border-blue-400 ring-2 ring-blue-100 cursor-pointer bg-blue-50/30' : 'border-slate-200'
             }`}
           >
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">개별 이동 / 기타 구역</span>
+            <div className="flex justify-between items-center mb-1.5">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">개별 이동 / 기타 구역</span>
               {individualMembers.length > 0 && (
                 <button
                   onClick={(e) => { e.stopPropagation(); handleResetIndividual(); }}
-                  className="text-[11px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-2 py-0.5 rounded-md"
+                  className="text-[10px] font-bold text-slate-500 bg-slate-100 hover:bg-slate-200 px-1.5 py-0.5 rounded"
                 >
                   해제
                 </button>
               )}
             </div>
-            <div className="min-h-[3rem] rounded-lg border border-dashed border-slate-200 p-2 flex flex-wrap gap-2 items-center bg-slate-50/50">
+            <div className="min-h-[2.5rem] rounded-lg border border-dashed border-slate-200 p-1.5 flex flex-wrap gap-1.5 items-center bg-slate-50/50">
               {individualMembers.length === 0 && (
-                <span className="text-slate-400 text-xs m-auto">
+                <span className="text-slate-400 text-[11px] m-auto">
                   {selectedMember ? '여기를 눌러서 이동' : '개별 이동 인원 없음'}
                 </span>
               )}
@@ -277,15 +266,15 @@ function App() {
 
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-1.5 bg-white text-slate-700 px-4 py-2 rounded-xl font-bold text-sm shadow-sm border border-slate-200 hover:bg-slate-50 active:scale-95 transition-all h-fit self-start mt-1"
+            className="flex items-center gap-1 bg-white text-slate-700 px-3 py-2 rounded-xl font-bold text-xs shadow-sm border border-slate-200 hover:bg-slate-50 active:scale-95 transition-all h-fit self-start"
           >
-            <Plus size={16} />
+            <Plus size={14} />
             스케줄 등록
           </button>
         </div>
 
-        {/* 스케줄 박스 목록 */}
-        <div className="flex flex-col gap-8">
+        {/* 스케줄 박스 목록 (간격 줄임) */}
+        <div className="flex flex-col gap-4">
           {schedules.map((schedule) => {
             const members = schedule.members || [];
             const keyCount = members.reduce((sum, m) => sum + (m.keyCount || 0), 0);
@@ -306,27 +295,27 @@ function App() {
             }
 
             return (
-              <div key={schedule.id} className="relative mt-5">
+              <div key={schedule.id} className="relative mt-2">
                 <div className="flex justify-between items-end mb-0 z-[1] relative">
                   <button 
                     onClick={() => handleCompleteSchedule(schedule.id, schedule.title)}
-                    className={`px-4 py-1.5 rounded-t-lg font-bold text-sm shadow-sm flex items-center gap-2 ${schedule.tabTheme}`}
+                    className={`px-3 py-1 rounded-t-lg font-bold text-xs shadow-sm flex items-center gap-1.5 ${schedule.tabTheme}`}
                   >
                     {schedule.title}
                   </button>
-                  <div className={`px-2.5 py-1 rounded-t-md text-xs font-bold ${labelClass} shadow-sm`}>
+                  <div className={`px-2 py-0.5 rounded-t-md text-[11px] font-bold ${labelClass} shadow-sm`}>
                     {status}
                   </div>
                 </div>
                 
                 <div 
                   onClick={() => selectedMember && handleMoveMemberTo('schedule', schedule.id)}
-                  className={`bg-white rounded-b-xl rounded-tl-none rounded-tr-xl p-4 shadow-sm border ${borderClass} ${
+                  className={`bg-white rounded-b-xl rounded-tl-none rounded-tr-xl p-3 shadow-sm border ${borderClass} ${
                     selectedMember ? 'border-blue-400 ring-2 ring-blue-100 cursor-pointer bg-blue-50/20' : ''
-                  } min-h-[6rem] flex flex-wrap gap-2.5 items-start transition-all relative`}
+                  } min-h-[5rem] flex flex-wrap gap-2 items-start transition-all relative`}
                 >
                   {members.length === 0 && (
-                    <span className="text-slate-400 text-sm font-medium m-auto">
+                    <span className="text-slate-400 text-xs font-medium m-auto">
                       {selectedMember ? '여기를 눌러서 합류' : '대기 중인 인원이 없습니다'}
                     </span>
                   )}
@@ -336,10 +325,10 @@ function App() {
                   {status === '대기' && members.length > 0 && (
                     <button
                       onClick={(e) => handleForceConfirm(schedule.id, e)}
-                      className="absolute bottom-2.5 right-2.5 p-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 border border-blue-200 shadow-sm"
+                      className="absolute bottom-2 right-2 p-1 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 border border-blue-200 shadow-sm"
                       title="강제 확정"
                     >
-                      <Check size={16} strokeWidth={3} />
+                      <Check size={14} strokeWidth={3} />
                     </button>
                   )}
                 </div>
@@ -352,21 +341,21 @@ function App() {
       {/* 하단 대기 멤버 풀 */}
       <div 
         onClick={() => selectedMember && handleMoveMemberTo('pool')}
-        className={`fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t p-4 shadow-lg z-10 transition-all ${
+        className={`fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t p-3 shadow-lg z-10 transition-all ${
           selectedMember ? 'border-blue-400 ring-4 ring-blue-200 bg-blue-50/90 cursor-pointer' : 'border-slate-200'
         }`}
       >
-        <div className="max-w-lg mx-auto flex flex-col gap-2">
+        <div className="max-w-lg mx-auto flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
               {selectedMember ? '👉 여기를 눌러서 대기열로 복귀' : '대기 멤버 풀'}
             </span>
-            <span className="text-xs font-bold text-slate-500">{waitingPool.length}명 대기중</span>
+            <span className="text-[11px] font-bold text-slate-500">{waitingPool.length}명 대기중</span>
           </div>
 
-          <div className="min-h-[4rem] max-h-36 overflow-y-auto rounded-xl border border-dashed border-slate-200 p-2.5 flex flex-wrap gap-2 items-start bg-slate-50/50">
+          <div className="min-h-[3.5rem] max-h-32 overflow-y-auto rounded-xl border border-dashed border-slate-200 p-2 flex flex-wrap gap-1.5 items-start bg-slate-50/50">
             {waitingPool.length === 0 && (
-              <span className="text-slate-400 text-xs m-auto">대기 중인 인원이 없습니다.</span>
+              <span className="text-slate-400 text-[11px] m-auto">대기 중인 인원이 없습니다.</span>
             )}
             {waitingPool.map(m => renderMemberChip(m))}
           </div>
@@ -376,30 +365,30 @@ function App() {
       {/* 새 스케줄 생성 모달 */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-sm p-5 shadow-xl">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-bold text-slate-800">새 스케줄 생성</h2>
+          <div className="bg-white rounded-2xl w-full max-w-sm p-4 shadow-xl">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-base font-bold text-slate-800">새 스케줄 생성</h2>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
             
-            <form onSubmit={handleAddSchedule} className="flex flex-col gap-4">
+            <form onSubmit={handleAddSchedule} className="flex flex-col gap-3">
               <div>
-                <label className="block text-sm font-bold text-slate-600 mb-1.5">이동 경로</label>
+                <label className="block text-xs font-bold text-slate-600 mb-1">이동 경로</label>
                 <input
                   type="text"
                   value={newScheduleTitle}
                   onChange={(e) => setNewScheduleTitle(e.target.value)}
                   placeholder="예: 공장 > HEB 마트 > 숙소"
-                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
                   autoFocus
                 />
               </div>
               <button 
                 type="submit"
                 disabled={!newScheduleTitle.trim()}
-                className="w-full bg-slate-800 text-white font-bold py-2.5 rounded-lg text-sm mt-2 disabled:bg-slate-300"
+                className="w-full bg-slate-800 text-white font-bold py-2 rounded-lg text-xs mt-1 disabled:bg-slate-300"
               >
                 등록하기
               </button>
