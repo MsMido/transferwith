@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, X, Check } from 'lucide-react';
+import { Plus, X, Check, Key } from 'lucide-react';
 import { db } from './firebase/firebase';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 
@@ -92,29 +92,49 @@ function App() {
     setSelectedMember(null);
   };
 
-  // 🔑 키 양도 로직 수정
+  // 🔑 안전한 키 양도 로직 (중복 증식 방지)
   const handleKeyClick = (targetMemberId, e) => {
-    e.stopPropagation(); // 부모(칩 클릭) 이벤트 전파 차단
+    e.stopPropagation(); 
     
     if (!selectedMember) return;
     const sourceMemberId = selectedMember.id;
 
-    // 자기 자신의 키를 누른 경우 양도 안 함
+    // 자기 자신의 키를 누른 경우는 무시
     if (sourceMemberId === targetMemberId) return;
 
-    const transferKey = (membersArray) => membersArray.map(m => {
-      let newKeyCount = m.keyCount || 0;
-      if (m.id === sourceMemberId) newKeyCount = Math.max(0, newKeyCount - 1);
-      if (m.id === targetMemberId) newKeyCount += 1;
-      return { ...m, keyCount: newKeyCount };
-    });
+    // 모든 구역(대기풀, 스케줄, 개별구역)을 탐색하여 소스 멤버의 키를 1개 줄이고 타겟 멤버의 키를 1개 늘림
+    const updateKeys = (membersArray) => {
+      // 먼저 소스 멤버가 이 배열에 있는지 확인하고 키가 부족하면 중단
+      const sourceMember = membersArray.find(m => m.id === sourceMemberId);
+      const targetMember = membersArray.find(m => m.id === targetMemberId);
 
-    const newSchedules = schedules.map(s => ({ ...s, members: transferKey(s.members) }));
-    const newPool = transferKey(waitingPool);
-    const newIndividual = transferKey(individualMembers);
+      if (!sourceMember && !targetMember) return membersArray;
 
-    setDoc(getStateDocRef(), { waitingPool: newPool, schedules: newSchedules, individualMembers: newIndividual }, { merge: true });
-    setSelectedMember(null); // 양도 후 선택 해제
+      return membersArray.map(m => {
+        if (m.id === sourceMemberId) {
+          return { ...m, keyCount: Math.max(0, (m.keyCount || 0) - 1) };
+        }
+        if (m.id === targetMemberId) {
+          return { ...m, keyCount: (m.keyCount || 0) + 1 };
+        }
+        return m;
+      });
+    };
+
+    let newPool = updateKeys(waitingPool);
+    let newIndividual = updateKeys(individualMembers);
+    let newSchedules = schedules.map(s => ({
+      ...s,
+      members: updateKeys(s.members)
+    }));
+
+    setDoc(getStateDocRef(), { 
+      waitingPool: newPool, 
+      schedules: newSchedules, 
+      individualMembers: newIndividual 
+    }, { merge: true });
+
+    setSelectedMember(null); 
   };
 
   const handleCompleteSchedule = (scheduleId, title) => {
@@ -171,6 +191,7 @@ function App() {
 
   const renderMemberChip = (member) => {
     const isSelected = selectedMember?.id === member.id;
+    const isTargetForReceiveKey = selectedMember && !isSelected; // 다른 사람을 선택했을 때 키를 받을 수 있는 대상
     const keys = Array.from({ length: member.keyCount || 0 });
 
     return (
@@ -183,23 +204,42 @@ function App() {
         className={`flex items-center pl-2.5 pr-1.5 py-1 rounded-lg border shadow-sm cursor-pointer transition-all text-xs ${
           isSelected 
             ? 'bg-blue-600 text-white border-blue-700 ring-2 ring-blue-300 scale-105' 
-            : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
+            : isTargetForReceiveKey
+              ? 'bg-amber-50/80 border-amber-300 hover:border-amber-400'
+              : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
         }`}
       >
         <span className="font-bold py-0.5">{member.name}</span>
-        <div className="flex gap-0.5 ml-1.5">
+        
+        {/* 키 표시 영역 */}
+        <div className="flex gap-0.5 ml-1.5 items-center">
           {keys.map((_, idx) => (
             <span 
               key={idx} 
               onClick={(e) => handleKeyClick(member.id, e)}
-              className={`px-1 py-0.5 rounded text-[10px] shadow-sm border cursor-pointer hover:opacity-80 ${
-                isSelected ? 'bg-blue-500 text-white border-blue-400' : 'bg-amber-50 text-amber-800 border-amber-200'
+              className={`px-1 py-0.5 rounded text-[10px] shadow-sm border transition-transform ${
+                isSelected 
+                  ? 'bg-blue-500 text-white border-blue-400' 
+                  : isTargetForReceiveKey
+                    ? 'bg-amber-200 text-amber-900 border-amber-400 animate-pulse scale-110' 
+                    : 'bg-amber-50 text-amber-800 border-amber-200'
               }`}
-              title="키를 누르면 선택된 멤버에게 양도됩니다"
+              title={isTargetForReceiveKey ? "여기를 누르면 선택한 사람의 키가 이에게 양도됩니다!" : "차키"}
             >
               🔑
             </span>
           ))}
+
+          {/* 키가 없을 때도 다른 사람을 선택 중이면 키를 받을 수 있도록 빈 키 영역(또는 추가 버튼 형태) 제공 */}
+          {keys.length === 0 && isTargetForReceiveKey && (
+            <span 
+              onClick={(e) => handleKeyClick(member.id, e)}
+              className="ml-1 px-1.5 py-0.5 rounded text-[10px] bg-amber-100 text-amber-800 border border-dashed border-amber-400 animate-pulse font-bold"
+              title="여기를 누르면 키를 받습니다"
+            >
+              +🔑 받기
+            </span>
+          )}
         </div>
       </div>
     );
@@ -212,7 +252,7 @@ function App() {
       
       {selectedMember && (
         <div className="fixed top-12 left-0 right-0 bg-blue-600 text-white text-xs font-bold py-1.5 px-3 text-center z-30 shadow-md flex justify-center items-center gap-2 animate-bounce">
-          <span>🎯 [{selectedMember.name}] 이동할 장소 또는 키를 받을 사람을 터치하세요!</span>
+          <span>🎯 [{selectedMember.name}] 이동할 장소 또는 🔑를 받을 사람을 터치하세요!</span>
           <button 
             onClick={() => setSelectedMember(null)}
             className="bg-blue-700 px-2 py-0.5 rounded text-[10px] hover:bg-blue-800"
