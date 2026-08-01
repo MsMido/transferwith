@@ -287,11 +287,14 @@ function App() {
     );
   };
 
-  const mainBgColor = activeTab === 'Working Day' ? 'bg-slate-50' : 'bg-blue-50/60';
+  nBgColor = activeTab === 'Working Day' ? 'bg-slate-50' : 'bg-blue-50/60';
 
   return (
-    <div className={`min-h-screen ${mainBgColor} flex flex-col font-sans transition-colors duration-300 select-none`}>
+    <div className={`min-h-screen ${mainBgColor} flex flex-col font-sans transition-colors duration-300 select-none relative overflow-x-hidden`}>
       
+      {/* 🌟 배경에 은은한 빛번짐 효과 추가 */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl pointer-events-none" />
+
       {selectedMember && (
         <div className="fixed top-12 left-0 right-0 bg-blue-600 text-white text-xs font-bold py-1.5 px-3 text-center z-30 shadow-md flex justify-center items-center gap-2 animate-bounce">
           <span>🎯 [{selectedMember.name}] 이동할 장소를 터치하세요!</span>
@@ -316,16 +319,25 @@ function App() {
         </div>
       )}
 
-      <div className="w-full flex h-12 bg-white/90 backdrop-blur-sm shadow-sm sticky top-0 z-20">
+      {/* 🌟 상단 탭 (아이콘 추가 및 유리알 반투명 효과 적용) */}
+      <div className="w-full flex h-13 bg-white/70 backdrop-blur-md shadow-sm sticky top-0 z-20 border-b border-slate-100">
         <button 
           onClick={() => setActiveTab('Working Day')}
-          className={`w-1/2 flex items-center justify-center font-bold text-sm transition-colors ${activeTab === 'Working Day' ? 'bg-slate-800 text-white' : 'text-slate-400 hover:bg-slate-100 hover:text-slate-600'}`}>
-          Working Day
+          className={`w-1/2 flex items-center justify-center font-bold text-sm transition-all gap-1.5 ${
+            activeTab === 'Working Day' 
+              ? 'bg-slate-900 text-white shadow-inner' 
+              : 'text-slate-400 hover:bg-slate-100/50 hover:text-slate-600'
+          }`}>
+          🏢 Working Day
         </button>
         <button 
           onClick={() => setActiveTab('Weekend')}
-          className={`w-1/2 flex items-center justify-center font-bold text-sm transition-colors ${activeTab === 'Weekend' ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-blue-50 hover:text-slate-600'}`}>
-          Weekend
+          className={`w-1/2 flex items-center justify-center font-bold text-sm transition-all gap-1.5 ${
+            activeTab === 'Weekend' 
+              ? 'bg-blue-600 text-white shadow-inner' 
+              : 'text-slate-400 hover:bg-blue-50/50 hover:text-slate-600'
+          }`}>
+          🌴 Weekend
         </button>
       </div>
 
