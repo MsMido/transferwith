@@ -290,9 +290,17 @@ function App() {
   return (
     <div className={`min-h-screen ${mainBgColor} flex flex-col font-sans transition-colors duration-300 select-none relative overflow-x-hidden`}>
       
-      {/* 배경 패턴 및 효과 */}
+      {/* 🌟 연한 격자 배경 및 우측 하단 은은한 자동차 실루엣 워터마크 */}
       <div className="absolute inset-0 opacity-[0.35] pointer-events-none bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:16px_16px]" />
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl pointer-events-none" />
+      
+      <div className="absolute right-[-30px] bottom-16 opacity-[0.03] pointer-events-none select-none z-0">
+        <svg width="320" height="320" viewBox="0 0 24 24" fill="currentColor" className="text-slate-900">
+          <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.22.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-4.66l.12-.34h13.76l.12.34V17z"/>
+          <circle cx="7.5" cy="14.5" r="1.5"/>
+          <circle cx="16.5" cy="14.5" r="1.5"/>
+        </svg>
+      </div>
 
       {selectedMember && (
         <div className="fixed top-12 left-0 right-0 bg-blue-600 text-white text-xs font-bold py-1.5 px-3 text-center z-30 shadow-md flex justify-center items-center gap-2 animate-bounce">
@@ -339,12 +347,12 @@ function App() {
         </button>
       </div>
 
-      <main className="flex-1 w-full max-w-lg mx-auto p-3 flex flex-col gap-4 mb-36">
+      <main className="flex-1 w-full max-w-lg mx-auto p-3 flex flex-col gap-4 mb-36 relative z-10">
         
         <div className="flex justify-between items-center gap-3 mt-1">
           <div 
             onClick={() => selectedMember && handleMoveMemberTo('individual')}
-            className={`flex-1 bg-white rounded-xl p-2.5 shadow-sm border transition-all ${
+            className={`flex-1 bg-white/90 backdrop-blur-sm rounded-xl p-2.5 shadow-sm border transition-all ${
               selectedMember ? 'border-blue-400 ring-2 ring-blue-100 cursor-pointer bg-blue-50/30' : 'border-slate-200'
             }`}
           >
@@ -371,7 +379,7 @@ function App() {
 
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-1 bg-white text-slate-700 px-3 py-2 rounded-xl font-bold text-xs shadow-sm border border-slate-200 hover:bg-slate-50 active:scale-95 transition-all h-fit self-start"
+            className="flex items-center gap-1 bg-white/90 backdrop-blur-sm text-slate-700 px-3 py-2 rounded-xl font-bold text-xs shadow-sm border border-slate-200 hover:bg-slate-50 active:scale-95 transition-all h-fit self-start"
           >
             <Plus size={14} />
             스케줄 등록
@@ -414,7 +422,7 @@ function App() {
                 
                 <div 
                   onClick={() => selectedMember && handleMoveMemberTo('schedule', schedule.id)}
-                  className={`bg-white rounded-b-xl rounded-tl-none rounded-tr-xl p-3 shadow-sm border ${borderClass} ${
+                  className={`bg-white/90 backdrop-blur-sm rounded-b-xl rounded-tl-none rounded-tr-xl p-3 shadow-sm border ${borderClass} ${
                     selectedMember ? 'border-blue-400 ring-2 ring-blue-100 cursor-pointer bg-blue-50/20' : ''
                   } min-h-[5rem] flex flex-wrap gap-2 items-start transition-all relative`}
                 >
