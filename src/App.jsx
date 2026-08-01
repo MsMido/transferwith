@@ -20,20 +20,27 @@ const INITIAL_POOL = [
 const INITIAL_SCHEDULES = [];
 
 function App() {
-  const [activeTab, setActiveTab] = useState('Working Day');
+  // 💡 브라우저에 저장된 마지막 탭 상태를 불러오거나 기본값 'Working Day' 사용
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem('transferWith_activeTab') || 'Working Day';
+  });
+
   const [waitingPool, setWaitingPool] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [individualMembers, setIndividualMembers] = useState([]);
   
-  // 상태 관리: 일반 이동용 선택, 키 양도용 선택
   const [selectedMember, setSelectedMember] = useState(null);
   const [keySenderMember, setKeySenderMember] = useState(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newScheduleTitle, setNewScheduleTitle] = useState('');
 
-  // 더블클릭/탭 감지용 ref
   const lastTapRef = useRef({ id: null, time: 0 });
+
+  // 탭이 바뀔 때마다 브라우저에 기억시키기
+  useEffect(() => {
+    localStorage.setItem('transferWith_activeTab', activeTab);
+  }, [activeTab]);
 
   const getStateDocRef = () => {
     const docId = activeTab === 'Working Day' ? 'workingDay' : 'weekend';
@@ -61,7 +68,6 @@ function App() {
     return () => unsubscribe();
   }, [activeTab]);
 
-  // 멤버 위치 이동 (탭 투 무브)
   const handleMoveMemberTo = (targetAreaType, targetScheduleId = null) => {
     if (!selectedMember) return;
     const memberData = selectedMember;
@@ -105,13 +111,11 @@ function App() {
     setKeySenderMember(null);
   };
 
-  // 🔑 엄격하고 안전한 키 양도 로직 (증식 방지)
   const handleTransferKeyTo = (targetMemberId) => {
     if (!keySenderMember) return;
     const sourceId = keySenderMember.id;
     if (sourceId === targetMemberId) return;
 
-    // 전체 배열을 돌며 소스에서 1개 감소, 타겟에서 1개 증가 (총 개수 불변)
     const transferInArray = (arr) => {
       const hasSource = arr.some(m => m.id === sourceId);
       const hasTarget = arr.some(m => m.id === targetMemberId);
@@ -144,7 +148,6 @@ function App() {
     setSelectedManagerAndReset();
   };
 
-  // 멤버 클릭 핸들러 (더블 탭 감지 및 모드 전환)
   const handleMemberClick = (member, e) => {
     e.stopPropagation();
 
@@ -152,24 +155,21 @@ function App() {
     const isDoubleTap = lastTapRef.current.id === member.id && (now - lastTapRef.current.time < 300);
     lastTapRef.current = { id: member.id, time: now };
 
-    // 만약 키가 있는 사람이면 더블 탭하거나 키 양도 모드 진입 가능
     if (isDoubleTap && (member.keyCount || 0) > 0) {
       setKeySenderMember(keySenderMember?.id === member.id ? null : member);
       setSelectedMember(null);
       return;
     }
 
-    // 이미 키 양도 모드일 때 다른 사람을 누르면 그 사람에게 키 양도
     if (keySenderMember) {
       if (keySenderMember.id === member.id) {
-        setKeySenderMember(null); // 자기 자신을 누르면 취소
+        setKeySenderMember(null);
       } else {
         handleTransferKeyTo(member.id);
       }
       return;
     }
 
-    // 일반 이동 모드
     if (selectedMember?.id === member.id) {
       setSelectedMember(null);
     } else {
@@ -178,10 +178,9 @@ function App() {
     }
   };
 
-  // 키 아이콘 직접 클릭 시 (키 양도 모드 즉시 토글)
   const handleKeyBadgeClick = (member, e) => {
     e.stopPropagation();
-    if ((member.keyCount || 0) <= 0) return; // 키가 없으면 무시
+    if ((member.keyCount || 0) <= 0) return;
 
     if (keySenderMember?.id === member.id) {
       setKeySenderMember(null);
@@ -293,7 +292,6 @@ function App() {
   return (
     <div className={`min-h-screen ${mainBgColor} flex flex-col font-sans transition-colors duration-300 select-none`}>
       
-      {/* 안내 배너 (이동 모드) */}
       {selectedMember && (
         <div className="fixed top-12 left-0 right-0 bg-blue-600 text-white text-xs font-bold py-1.5 px-3 text-center z-30 shadow-md flex justify-center items-center gap-2 animate-bounce">
           <span>🎯 [{selectedMember.name}] 이동할 장소를 터치하세요!</span>
@@ -306,7 +304,6 @@ function App() {
         </div>
       )}
 
-      {/* 안내 배너 (키 양도 모드) */}
       {keySenderMember && (
         <div className="fixed top-12 left-0 right-0 bg-amber-500 text-white text-xs font-bold py-1.5 px-3 text-center z-30 shadow-md flex justify-center items-center gap-2 animate-bounce">
           <span>🔑 [{keySenderMember.name}]의 키를 받을 사람을 터치하세요!</span>
@@ -334,7 +331,6 @@ function App() {
 
       <main className="flex-1 w-full max-w-lg mx-auto p-3 flex flex-col gap-4 mb-36">
         
-        {/* 개별 이동 구역 */}
         <div className="flex justify-between items-center gap-3 mt-1">
           <div 
             onClick={() => selectedMember && handleMoveMemberTo('individual')}
@@ -372,7 +368,6 @@ function App() {
           </button>
         </div>
 
-        {/* 스케줄 박스 목록 */}
         <div className="flex flex-col gap-4">
           {schedules.map((schedule) => {
             const members = schedule.members || [];
@@ -437,7 +432,6 @@ function App() {
         </div>
       </main>
 
-      {/* 하단 대기 멤버 풀 */}
       <div 
         onClick={() => selectedMember && handleMoveMemberTo('pool')}
         className={`fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t p-3 shadow-lg z-10 transition-all ${
@@ -461,7 +455,6 @@ function App() {
         </div>
       </div>
 
-      {/* 새 스케줄 생성 모달 */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-sm p-4 shadow-xl">
