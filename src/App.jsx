@@ -246,22 +246,23 @@ function App() {
     const isKeyReceiverTarget = keySenderMember && !isKeySender;
     const keys = Array.from({ length: member.keyCount || 0 });
 
-    let borderStyle = 'bg-white border-slate-200 text-slate-700 hover:border-slate-300';
+    // 칩 스타일 세팅
+    let borderStyle = 'bg-white/90 border-white/50 text-slate-800 hover:bg-white';
     if (isSelected) {
-      borderStyle = 'bg-blue-600 text-white border-blue-700 ring-2 ring-blue-300 scale-105';
+      borderStyle = 'bg-blue-600 text-white border-blue-500 ring-2 ring-blue-300 scale-105 shadow-md';
     } else if (isKeySender) {
-      borderStyle = 'bg-amber-500 text-white border-amber-600 ring-2 ring-amber-300 scale-105';
+      borderStyle = 'bg-amber-500 text-white border-amber-400 ring-2 ring-amber-300 scale-105 shadow-md';
     } else if (isKeyReceiverTarget) {
-      borderStyle = 'bg-amber-50 border-amber-400 ring-2 ring-amber-200 animate-pulse';
+      borderStyle = 'bg-amber-50/90 border-amber-400 ring-2 ring-amber-300 animate-pulse';
     }
 
     return (
       <div 
         key={member.id}
         onClick={(e) => handleMemberClick(member, e)}
-        className={`flex items-center pl-2.5 pr-1.5 py-1 rounded-lg border shadow-sm cursor-pointer transition-all text-xs ${borderStyle}`}
+        className={`flex items-center pl-2.5 pr-1.5 py-1 rounded-lg border shadow-sm cursor-pointer transition-all text-xs font-medium backdrop-blur-sm ${borderStyle}`}
       >
-        <span className="font-bold py-0.5">{member.name}</span>
+        <span className="py-0.5">{member.name}</span>
         
         <div className="flex gap-0.5 ml-1.5 items-center">
           {keys.map((_, idx) => (
@@ -273,7 +274,7 @@ function App() {
                   ? 'bg-amber-600 text-white border-amber-400 scale-110' 
                   : isSelected 
                     ? 'bg-blue-500 text-white border-blue-400' 
-                    : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                    : 'bg-amber-100/90 text-amber-800 border-amber-300 hover:bg-amber-200'
               }`}
               title="키를 누르거나 더블클릭하면 키 넘기기 모드가 켜집니다"
             >
@@ -286,24 +287,23 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col font-sans select-none relative overflow-x-hidden bg-slate-900">
+    <div className="min-h-screen flex flex-col font-sans select-none relative overflow-x-hidden">
       
-      {/* 🌟 CSS 배경: Working Day (퇴근길 도로 감성) */}
-      <div className={`absolute inset-0 transition-opacity duration-1000 ease-in-out pointer-events-none ${activeTab === 'Working Day' ? 'opacity-100' : 'opacity-0'}`}>
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950" />
-        <div className="absolute top-1/4 -left-10 w-96 h-20 bg-red-500/20 rounded-full blur-[80px] transform -skew-y-12" />
-        <div className="absolute bottom-1/4 right-0 w-80 h-24 bg-yellow-500/15 rounded-full blur-[70px] transform -skew-y-12" />
-      </div>
+      {/* 🌟 1. 그림 배경 레이어 (탭 전환 시 페이드인/아웃 효과) */}
+      <div 
+        className="fixed inset-0 bg-cover bg-center bg-no-repeat transition-all duration-700 ease-in-out z-[-2]"
+        style={{ backgroundImage: `url(${activeTab === 'Working Day' ? '/Working.png' : '/Weekend.png'})` }}
+      />
+      
+      {/* 🌟 2. 텍스트 가독성을 위한 부드러운 오버레이 레이어 */}
+      {/* Working Day(밤)일 때는 어두운 필터를, Weekend(낮)일 때는 밝고 은은한 필터를 덮어줍니다. */}
+      <div className={`fixed inset-0 transition-colors duration-700 ease-in-out z-[-1] ${
+        activeTab === 'Working Day' ? 'bg-slate-900/40' : 'bg-white/20'
+      }`} />
 
-      {/* 🌟 CSS 배경: Weekend (아늑한 해변 노을 감성) */}
-      <div className={`absolute inset-0 transition-opacity duration-1000 ease-in-out pointer-events-none ${activeTab === 'Weekend' ? 'opacity-100' : 'opacity-0'}`}>
-        <div className="absolute inset-0 bg-gradient-to-b from-sky-200/80 via-orange-100/90 to-amber-100/90" />
-        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-72 h-72 bg-orange-400/30 rounded-full blur-[90px]" />
-        <div className="absolute bottom-0 w-full h-1/3 bg-gradient-to-t from-teal-500/10 to-transparent" />
-      </div>
-
+      {/* 안내 배너 */}
       {selectedMember && (
-        <div className="fixed top-12 left-0 right-0 bg-blue-600 text-white text-xs font-bold py-1.5 px-3 text-center z-30 shadow-md flex justify-center items-center gap-2 animate-bounce">
+        <div className="fixed top-12 left-0 right-0 bg-blue-600/95 backdrop-blur-md text-white text-xs font-bold py-1.5 px-3 text-center z-30 shadow-md flex justify-center items-center gap-2 animate-bounce">
           <span>🎯 [{selectedMember.name}] 이동할 장소를 터치하세요!</span>
           <button 
             onClick={setSelectedManagerAndReset}
@@ -315,7 +315,7 @@ function App() {
       )}
 
       {keySenderMember && (
-        <div className="fixed top-12 left-0 right-0 bg-amber-500 text-white text-xs font-bold py-1.5 px-3 text-center z-30 shadow-md flex justify-center items-center gap-2 animate-bounce">
+        <div className="fixed top-12 left-0 right-0 bg-amber-500/95 backdrop-blur-md text-white text-xs font-bold py-1.5 px-3 text-center z-30 shadow-md flex justify-center items-center gap-2 animate-bounce">
           <span>🔑 [{keySenderMember.name}]의 키를 받을 사람을 터치하세요!</span>
           <button 
             onClick={setSelectedManagerAndReset}
@@ -326,13 +326,14 @@ function App() {
         </div>
       )}
 
-      <div className="w-full flex h-13 bg-white/50 backdrop-blur-md shadow-sm sticky top-0 z-20 border-b border-white/20 transition-colors duration-500">
+      {/* 🌟 3. 상단 탭 (투명도를 높여 배경이 예쁘게 비치도록 수정) */}
+      <div className="w-full flex h-13 bg-white/40 backdrop-blur-lg shadow-sm sticky top-0 z-20 border-b border-white/30 transition-colors duration-500">
         <button 
           onClick={() => setActiveTab('Working Day')}
           className={`w-1/2 flex items-center justify-center font-bold text-sm transition-all gap-1.5 ${
             activeTab === 'Working Day' 
               ? 'bg-slate-900/80 text-white shadow-inner' 
-              : 'text-slate-600 hover:bg-white/50'
+              : 'text-slate-700 hover:bg-white/40'
           }`}>
           🏢 Working Day
         </button>
@@ -341,7 +342,7 @@ function App() {
           className={`w-1/2 flex items-center justify-center font-bold text-sm transition-all gap-1.5 ${
             activeTab === 'Weekend' 
               ? 'bg-orange-500/80 text-white shadow-inner' 
-              : 'text-slate-600 hover:bg-white/50'
+              : 'text-slate-700 hover:bg-white/40'
           }`}>
           🌴 Weekend
         </button>
@@ -349,11 +350,12 @@ function App() {
 
       <main className="flex-1 w-full max-w-lg mx-auto p-3 flex flex-col gap-4 mb-36 relative z-10">
         
+        {/* 개별 이동 구역 (글래스모피즘 적용) */}
         <div className="flex justify-between items-center gap-3 mt-1">
           <div 
             onClick={() => selectedMember && handleMoveMemberTo('individual')}
             className={`flex-1 bg-white/70 backdrop-blur-md rounded-xl p-2.5 shadow-sm border transition-all ${
-              selectedMember ? 'border-blue-400 ring-2 ring-blue-100 cursor-pointer bg-blue-50/70' : 'border-white/50'
+              selectedMember ? 'border-blue-400 ring-2 ring-blue-300/50 cursor-pointer bg-blue-50/80' : 'border-white/50'
             }`}
           >
             <div className="flex justify-between items-center mb-1.5">
@@ -361,15 +363,15 @@ function App() {
               {individualMembers.length > 0 && (
                 <button
                   onClick={(e) => { e.stopPropagation(); handleResetIndividual(); }}
-                  className="text-[10px] font-bold text-slate-600 bg-white/60 hover:bg-white/90 px-1.5 py-0.5 rounded shadow-sm"
+                  className="text-[10px] font-bold text-slate-600 bg-white/80 hover:bg-white px-1.5 py-0.5 rounded shadow-sm"
                 >
                   해제
                 </button>
               )}
             </div>
-            <div className="min-h-[2.5rem] rounded-lg border border-dashed border-slate-400/40 p-1.5 flex flex-wrap gap-1.5 items-center bg-white/30">
+            <div className="min-h-[2.5rem] rounded-lg border border-dashed border-slate-400/50 p-1.5 flex flex-wrap gap-1.5 items-center bg-white/30">
               {individualMembers.length === 0 && (
-                <span className="text-slate-500 text-[11px] m-auto font-medium">
+                <span className="text-slate-600 text-[11px] m-auto font-medium">
                   {selectedMember ? '여기를 눌러서 이동' : '개별 이동 인원 없음'}
                 </span>
               )}
@@ -379,13 +381,14 @@ function App() {
 
           <button 
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-1 bg-white/80 backdrop-blur-md text-slate-700 px-3 py-2 rounded-xl font-bold text-xs shadow-sm border border-white/50 hover:bg-white active:scale-95 transition-all h-fit self-start"
+            className="flex items-center gap-1 bg-white/80 backdrop-blur-md text-slate-800 px-3 py-2 rounded-xl font-bold text-xs shadow-sm border border-white/50 hover:bg-white active:scale-95 transition-all h-fit self-start"
           >
             <Plus size={14} />
             스케줄 등록
           </button>
         </div>
 
+        {/* 스케줄 카드 목록 (글래스모피즘 적용) */}
         <div className="flex flex-col gap-4">
           {schedules.map((schedule) => {
             const members = schedule.members || [];
@@ -396,8 +399,8 @@ function App() {
               status = keyCount === 0 ? 'SOS' : '확정';
             }
 
-            let borderClass = 'border-white/40';
-            let labelClass = 'bg-white/80 text-slate-600';
+            let borderClass = 'border-white/50';
+            let labelClass = 'bg-white/80 text-slate-700';
             if (status === '확정') {
               borderClass = 'border-blue-400/80 ring-2 ring-blue-300/50';
               labelClass = 'bg-blue-100 text-blue-700';
@@ -423,11 +426,11 @@ function App() {
                 <div 
                   onClick={() => selectedMember && handleMoveMemberTo('schedule', schedule.id)}
                   className={`bg-white/70 backdrop-blur-md rounded-b-xl rounded-tl-none rounded-tr-xl p-3 shadow-sm border ${borderClass} ${
-                    selectedMember ? 'border-blue-400 ring-2 ring-blue-200 cursor-pointer bg-blue-50/70' : ''
+                    selectedMember ? 'border-blue-400 ring-2 ring-blue-300/50 cursor-pointer bg-blue-50/80' : ''
                   } min-h-[5rem] flex flex-wrap gap-2 items-start transition-all relative`}
                 >
                   {members.length === 0 && (
-                    <span className="text-slate-500 text-xs font-medium m-auto">
+                    <span className="text-slate-600 text-xs font-medium m-auto drop-shadow-sm">
                       {selectedMember ? '여기를 눌러서 합류' : '대기 중인 인원이 없습니다'}
                     </span>
                   )}
@@ -437,7 +440,7 @@ function App() {
                   {status === '대기' && members.length > 0 && (
                     <button
                       onClick={(e) => handleForceConfirm(schedule.id, e)}
-                      className="absolute bottom-2 right-2 p-1 bg-white/80 text-blue-600 rounded-md hover:bg-white border border-blue-200 shadow-sm"
+                      className="absolute bottom-2 right-2 p-1 bg-white/90 text-blue-600 rounded-md hover:bg-white border border-blue-200 shadow-sm"
                       title="강제 확정"
                     >
                       <Check size={14} strokeWidth={3} />
@@ -450,23 +453,24 @@ function App() {
         </div>
       </main>
 
+      {/* 하단 대기 멤버 풀 (글래스모피즘 적용) */}
       <div 
         onClick={() => selectedMember && handleMoveMemberTo('pool')}
         className={`fixed bottom-0 left-0 right-0 bg-white/60 backdrop-blur-xl border-t border-white/40 p-3 shadow-lg z-10 transition-all ${
-          selectedMember ? 'border-blue-400 ring-4 ring-blue-300 bg-blue-50/80 cursor-pointer' : ''
+          selectedMember ? 'border-blue-400 ring-4 ring-blue-300/50 bg-blue-50/80 cursor-pointer' : ''
         }`}
       >
         <div className="max-w-lg mx-auto flex flex-col gap-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+            <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider drop-shadow-sm">
               {selectedMember ? '👉 여기를 눌러서 대기열로 복귀' : '대기 멤버 풀'}
             </span>
-            <span className="text-[11px] font-bold text-slate-700">{waitingPool.length}명 대기중</span>
+            <span className="text-[11px] font-bold text-slate-800 drop-shadow-sm">{waitingPool.length}명 대기중</span>
           </div>
 
-          <div className="min-h-[3.5rem] max-h-32 overflow-y-auto rounded-xl border border-dashed border-slate-400/50 p-2 flex flex-wrap gap-1.5 items-start bg-white/40">
+          <div className="min-h-[3.5rem] max-h-32 overflow-y-auto rounded-xl border border-dashed border-slate-500/40 p-2 flex flex-wrap gap-1.5 items-start bg-white/40">
             {waitingPool.length === 0 && (
-              <span className="text-slate-500 text-[11px] m-auto font-medium">대기 중인 인원이 없습니다.</span>
+              <span className="text-slate-600 text-[11px] m-auto font-medium">대기 중인 인원이 없습니다.</span>
             )}
             {waitingPool.map(m => renderMemberChip(m))}
           </div>
@@ -475,30 +479,30 @@ function App() {
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl w-full max-w-sm p-4 shadow-xl">
+          <div className="bg-white/90 backdrop-blur-md rounded-2xl w-full max-w-sm p-4 shadow-xl">
             <div className="flex justify-between items-center mb-3">
               <h2 className="text-base font-bold text-slate-800">새 스케줄 생성</h2>
-              <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+              <button onClick={() => setIsModalOpen(false)} className="text-slate-500 hover:text-slate-800">
                 <X size={18} />
               </button>
             </div>
             
             <form onSubmit={handleAddSchedule} className="flex flex-col gap-3">
               <div>
-                <label className="block text-xs font-bold text-slate-600 mb-1">이동 경로</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">이동 경로</label>
                 <input
                   type="text"
                   value={newScheduleTitle}
                   onChange={(e) => setNewScheduleTitle(e.target.value)}
                   placeholder="예: 공장 > HEB 마트 > 숙소"
-                  className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                  className="w-full border border-slate-300 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white/80"
                   autoFocus
                 />
               </div>
               <button 
                 type="submit"
                 disabled={!newScheduleTitle.trim()}
-                className="w-full bg-slate-800 text-white font-bold py-2 rounded-lg text-xs mt-1 disabled:bg-slate-300"
+                className="w-full bg-slate-800/90 backdrop-blur-sm text-white font-bold py-2 rounded-lg text-xs mt-1 disabled:bg-slate-400"
               >
                 등록하기
               </button>
