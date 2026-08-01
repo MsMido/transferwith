@@ -20,7 +20,6 @@ const INITIAL_POOL = [
 const INITIAL_SCHEDULES = [];
 
 function App() {
-  // 💡 브라우저에 저장된 마지막 탭 상태를 불러오거나 기본값 'Working Day' 사용
   const [activeTab, setActiveTab] = useState(() => {
     return localStorage.getItem('transferWith_activeTab') || 'Working Day';
   });
@@ -37,7 +36,6 @@ function App() {
 
   const lastTapRef = useRef({ id: null, time: 0 });
 
-  // 탭이 바뀔 때마다 브라우저에 기억시키기
   useEffect(() => {
     localStorage.setItem('transferWith_activeTab', activeTab);
   }, [activeTab]);
@@ -287,12 +285,12 @@ function App() {
     );
   };
 
-  nBgColor = activeTab === 'Working Day' ? 'bg-slate-50' : 'bg-blue-50/60';
+  const mainBgColor = activeTab === 'Working Day' ? 'bg-slate-50' : 'bg-blue-50/60';
 
-return (
+  return (
     <div className={`min-h-screen ${mainBgColor} flex flex-col font-sans transition-colors duration-300 select-none relative overflow-x-hidden`}>
       
-      {/* 🌟 배경에 은은한 빛번짐 효과 추가 */}
+      {/* 배경 패턴 및 효과 */}
       <div className="absolute inset-0 opacity-[0.35] pointer-events-none bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:16px_16px]" />
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -320,7 +318,6 @@ return (
         </div>
       )}
 
-      {/* 🌟 상단 탭 (아이콘 추가 및 유리알 반투명 효과 적용) */}
       <div className="w-full flex h-13 bg-white/70 backdrop-blur-md shadow-sm sticky top-0 z-20 border-b border-slate-100">
         <button 
           onClick={() => setActiveTab('Working Day')}
