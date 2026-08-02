@@ -246,7 +246,6 @@ function App() {
     const isKeyReceiverTarget = keySenderMember && !isKeySender;
     const keys = Array.from({ length: member.keyCount || 0 });
 
-    // 칩 스타일 세팅
     let borderStyle = 'bg-white/90 border-white/50 text-slate-800 hover:bg-white';
     if (isSelected) {
       borderStyle = 'bg-blue-600 text-white border-blue-500 ring-2 ring-blue-300 scale-105 shadow-md';
@@ -286,22 +285,27 @@ function App() {
     );
   };
 
+  // 배경 바깥 영역(여백) 색상 처리
+  const mainBgColor = activeTab === 'Working Day' ? 'bg-slate-900' : 'bg-orange-50';
+
   return (
-    <div className="min-h-screen flex flex-col font-sans select-none relative overflow-x-hidden">
+    <div className={`min-h-screen flex flex-col font-sans select-none relative overflow-x-hidden ${mainBgColor} transition-colors duration-700`}>
       
-      {/* 🌟 1. 그림 배경 레이어 (탭 전환 시 페이드인/아웃 효과) */}
-      <div 
-        className="fixed inset-0 bg-cover bg-center bg-no-repeat transition-all duration-700 ease-in-out z-[-2]"
-        style={{ backgroundImage: `url(${activeTab === 'Working Day' ? '/Working.png' : '/Weekend.png'})` }}
-      />
+      {/* 🌟 1. 그림 배경 레이어 (어플 사이즈 max-w-lg에 맞추고 투명도 35%로 은은하게 조정) */}
+      <div className="fixed inset-0 flex justify-center z-[-2] pointer-events-none">
+        <div 
+          className="w-full max-w-lg h-full bg-cover bg-center bg-no-repeat transition-all duration-700 ease-in-out opacity-35"
+          style={{ backgroundImage: `url(${activeTab === 'Working Day' ? '/Working.png' : '/Weekend.png'})` }}
+        />
+      </div>
       
       {/* 🌟 2. 텍스트 가독성을 위한 부드러운 오버레이 레이어 */}
-      {/* Working Day(밤)일 때는 어두운 필터를, Weekend(낮)일 때는 밝고 은은한 필터를 덮어줍니다. */}
-      <div className={`fixed inset-0 transition-colors duration-700 ease-in-out z-[-1] ${
-        activeTab === 'Working Day' ? 'bg-slate-900/40' : 'bg-white/20'
-      }`} />
+      <div className="fixed inset-0 flex justify-center z-[-1] pointer-events-none">
+        <div className={`w-full max-w-lg h-full transition-colors duration-700 ease-in-out ${
+          activeTab === 'Working Day' ? 'bg-slate-900/40' : 'bg-white/30'
+        }`} />
+      </div>
 
-      {/* 안내 배너 */}
       {selectedMember && (
         <div className="fixed top-12 left-0 right-0 bg-blue-600/95 backdrop-blur-md text-white text-xs font-bold py-1.5 px-3 text-center z-30 shadow-md flex justify-center items-center gap-2 animate-bounce">
           <span>🎯 [{selectedMember.name}] 이동할 장소를 터치하세요!</span>
@@ -326,7 +330,6 @@ function App() {
         </div>
       )}
 
-      {/* 🌟 3. 상단 탭 (투명도를 높여 배경이 예쁘게 비치도록 수정) */}
       <div className="w-full flex h-13 bg-white/40 backdrop-blur-lg shadow-sm sticky top-0 z-20 border-b border-white/30 transition-colors duration-500">
         <button 
           onClick={() => setActiveTab('Working Day')}
@@ -350,7 +353,6 @@ function App() {
 
       <main className="flex-1 w-full max-w-lg mx-auto p-3 flex flex-col gap-4 mb-36 relative z-10">
         
-        {/* 개별 이동 구역 (글래스모피즘 적용) */}
         <div className="flex justify-between items-center gap-3 mt-1">
           <div 
             onClick={() => selectedMember && handleMoveMemberTo('individual')}
@@ -388,7 +390,6 @@ function App() {
           </button>
         </div>
 
-        {/* 스케줄 카드 목록 (글래스모피즘 적용) */}
         <div className="flex flex-col gap-4">
           {schedules.map((schedule) => {
             const members = schedule.members || [];
@@ -453,7 +454,6 @@ function App() {
         </div>
       </main>
 
-      {/* 하단 대기 멤버 풀 (글래스모피즘 적용) */}
       <div 
         onClick={() => selectedMember && handleMoveMemberTo('pool')}
         className={`fixed bottom-0 left-0 right-0 bg-white/60 backdrop-blur-xl border-t border-white/40 p-3 shadow-lg z-10 transition-all ${
