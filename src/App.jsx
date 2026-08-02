@@ -285,21 +285,23 @@ function App() {
     );
   };
 
-  // 배경 바깥 영역(여백) 색상 처리
-  const mainBgColor = activeTab === 'Working Day' ? 'bg-slate-900' : 'bg-orange-50';
-
   return (
-    <div className={`min-h-screen flex flex-col font-sans select-none relative overflow-x-hidden ${mainBgColor} transition-colors duration-700`}>
+    <div className="min-h-screen flex flex-col font-sans select-none relative overflow-x-hidden">
       
-      {/* 🌟 1. 그림 배경 레이어 (어플 사이즈 max-w-lg에 맞추고 투명도 35%로 은은하게 조정) */}
+      {/* 🌟 1. 전체 바깥 배경색 레이어 (가장 밑바닥 z-[-3]) */}
+      <div className={`fixed inset-0 transition-colors duration-700 ease-in-out z-[-3] ${
+        activeTab === 'Working Day' ? 'bg-slate-900' : 'bg-orange-50'
+      }`} />
+
+      {/* 🌟 2. 그림 배경 레이어 (어플 사이즈 max-w-lg에 맞추고 투명도 35%로 조정) */}
       <div className="fixed inset-0 flex justify-center z-[-2] pointer-events-none">
         <div 
-          className="w-full max-w-lg h-full bg-cover bg-center bg-no-repeat transition-all duration-700 ease-in-out opacity-35"
+          className="w-full max-w-lg h-full bg-cover bg-center bg-no-repeat transition-all duration-700 ease-in-out opacity-[0.35]"
           style={{ backgroundImage: `url(${activeTab === 'Working Day' ? '/Working.png' : '/Weekend.png'})` }}
         />
       </div>
       
-      {/* 🌟 2. 텍스트 가독성을 위한 부드러운 오버레이 레이어 */}
+      {/* 🌟 3. 텍스트 가독성을 위한 부드러운 오버레이 레이어 */}
       <div className="fixed inset-0 flex justify-center z-[-1] pointer-events-none">
         <div className={`w-full max-w-lg h-full transition-colors duration-700 ease-in-out ${
           activeTab === 'Working Day' ? 'bg-slate-900/40' : 'bg-white/30'
