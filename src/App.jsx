@@ -14,7 +14,9 @@ const INITIAL_POOL = [
   { id: 8, name: '김진영', keyCount: 0 },
   { id: 9, name: '황정민', keyCount: 1 },
   { id: 10, name: '황종철', keyCount: 1 },
-  { id: 11, name: '우용', keyCount: 0 },
+  { id: 11, name: '김경훈', keyCount: 0 },
+  { id: 12, name: '외부1', keyCount: 0 },
+  { id: 13, name: '외부1', keyCount: 0 },
 ];
 
 const INITIAL_SCHEDULES = [];
