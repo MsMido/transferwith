@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, X, Check } from 'lucide-react';
+import { Plus, X, Check, History } from 'lucide-react';
 import { db } from './firebase/firebase';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 
@@ -20,21 +20,38 @@ const INITIAL_POOL = [
 ];
 
 const INITIAL_SCHEDULES = [];
+const TOTAL_KEYS_FIXED = 4; // 전체 시스템에 존재하는 고정된 총 열쇠 개수
 
 function App() {
   const [activeTab, setActiveTab] = useState(() => {
     return localStorage.getItem('transferWith_activeTab') || 'Working Day';
   });
 
+  const [myUserNo, setMyUserNo] = useState(() => {
+    let savedNo = localStorage.getItem('transferWith_userNo');
+    if (!savedNo) {
+      savedNo = Math.floor(1000 + Math.random() * 9000).toString();
+      localStorage.setItem('transferWith_userNo', savedNo);
+    }
+    return savedNo;
+  });
+
   const [waitingPool, setWaitingPool] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [individualMembers, setIndividualMembers] = useState([]);
+  const [systemLogs, setSystemLogs] = useState([]);
   
   const [selectedMember, setSelectedMember] = useState(null);
   const [keySenderMember, setKeySenderMember] = useState(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+  const [isMyInfoModalOpen, setIsMyInfoModalOpen] = useState(false);
   const [newScheduleTitle, setNewScheduleTitle] = useState('');
+
+  // 10번 탭 감지용 상태 및 레퍼런스 (화면 표시 없음)
+  const [poolTapCount, setPoolTapCount] = useState(0);
+  const poolTapTimerRef = useRef(null);
 
   const lastTapRef = useRef({ id: null, time: 0 });
 
@@ -56,17 +73,58 @@ function App() {
         setWaitingPool(data.waitingPool || []);
         setSchedules(data.schedules || []);
         setIndividualMembers(data.individualMembers || []);
+        setSystemLogs(data.systemLogs || []);
       } else {
         setDoc(stateDocRef, {
           waitingPool: INITIAL_POOL,
           schedules: INITIAL_SCHEDULES,
-          individualMembers: []
+          individualMembers: [],
+          systemLogs: [{ text: '시스템이 초기화되었습니다.', time: new Date().toLocaleTimeString(), userNo: 'System' }]
         });
       }
     });
 
     return () => unsubscribe();
   }, [activeTab]);
+
+  const validateAndCalculateKeys = (pool, ind, scheds) => {
+    let totalKeys = 0;
+    const countPool = (arr) => arr.forEach(m => totalKeys += (m.keyCount || 0));
+
+    countPool(pool);
+    countPool(ind);
+    scheds.forEach(s => countPool(s.members || []));
+
+    if (totalKeys !== TOTAL_KEYS_FIXED) {
+      console.warn(`[무결성 경고] 열쇠 개수가 일치하지 않습니다! 현재 총 개수: ${totalKeys} (기대값: ${TOTAL_KEYS_FIXED})`);
+      return false;
+    }
+    return true;
+  };
+
+  const commitStateToFirebase = (newPool, newSchedules, newIndividual, logDescription) => {
+    if (!validateAndCalculateKeys(newPool, newIndividual, newSchedules)) {
+      alert('오류: 열쇠의 총 개수가 변조되었습니다! 작업이 취소됩니다.');
+      return;
+    }
+
+    const newLogEntry = {
+      text: logDescription,
+      time: new Date().toLocaleTimeString(),
+      userNo: myUserNo
+    };
+
+    const updatedLogs = [newLogEntry, ...systemLogs].slice(0, 100);
+
+    setDoc(getStateDocRef(), { 
+      waitingPool: newPool, 
+      schedules: newSchedules, 
+      individualMembers: newIndividual,
+      systemLogs: updatedLogs
+    }, { merge: true });
+
+    setSelectedManagerAndReset();
+  };
 
   const handleMoveMemberTo = (targetAreaType, targetScheduleId = null) => {
     if (!selectedMember) return;
@@ -79,13 +137,16 @@ function App() {
       members: s.members.filter(m => m.id !== memberData.id)
     }));
 
+    let targetName = '대기열';
     if (targetAreaType === 'pool') {
       newPool = [...newPool, memberData];
     } else if (targetAreaType === 'individual') {
       newIndividual = [...newIndividual, memberData];
+      targetName = '개별 이동';
     } else if (targetAreaType === 'schedule') {
       newSchedules = newSchedules.map(s => {
         if (s.id === targetScheduleId) {
+          targetName = s.title;
           const updatedMembers = [...s.members, memberData];
           return { 
             ...s, 
@@ -97,13 +158,7 @@ function App() {
       });
     }
 
-    setDoc(getStateDocRef(), { 
-      waitingPool: newPool, 
-      schedules: newSchedules, 
-      individualMembers: newIndividual 
-    }, { merge: true });
-
-    setSelectedManagerAndReset();
+    commitStateToFirebase(newPool, newSchedules, newIndividual, `${memberData.name}님이 [${targetName}] (으)로 이동함`);
   };
 
   const setSelectedManagerAndReset = () => {
@@ -116,12 +171,10 @@ function App() {
     const sourceId = keySenderMember.id;
     if (sourceId === targetMemberId) return;
 
+    let targetMemberName = '';
     const transferInArray = (arr) => {
-      const hasSource = arr.some(m => m.id === sourceId);
-      const hasTarget = arr.some(m => m.id === targetMemberId);
-      if (!hasSource && !hasTarget) return arr;
-
       return arr.map(m => {
+        if (m.id === targetMemberId) targetMemberName = m.name;
         if (m.id === sourceId) {
           return { ...m, keyCount: Math.max(0, (m.keyCount || 0) - 1) };
         }
@@ -139,13 +192,7 @@ function App() {
       members: transferInArray(s.members)
     }));
 
-    setDoc(getStateDocRef(), { 
-      waitingPool: newPool, 
-      schedules: newSchedules, 
-      individualMembers: newIndividual 
-    }, { merge: true });
-
-    setSelectedManagerAndReset();
+    commitStateToFirebase(newPool, newSchedules, newIndividual, `${keySenderMember.name}님이 ${targetMemberName}님에게 키를 전달함`);
   };
 
   const handleMemberClick = (member, e) => {
@@ -202,7 +249,7 @@ function App() {
       const newPool = [...waitingPool, ...targetSchedule.members];
       const newSchedules = schedules.filter(s => s.id !== scheduleId);
       
-      setDoc(getStateDocRef(), { waitingPool: newPool, schedules: newSchedules, individualMembers }, { merge: true });
+      commitStateToFirebase(newPool, newSchedules, individualMembers, `[${title}] 스케줄 완료 및 해제`);
     }
   };
 
@@ -210,7 +257,7 @@ function App() {
     if (individualMembers.length === 0) return;
     if (window.confirm('개별 이동 인원을 모두 대기열로 복귀시키겠습니까?')) {
       const newPool = [...waitingPool, ...individualMembers];
-      setDoc(getStateDocRef(), { waitingPool: newPool, schedules, individualMembers: [] }, { merge: true });
+      commitStateToFirebase(newPool, schedules, [], '개별 이동 인원 전체 대기열 복귀');
     }
   };
 
@@ -219,7 +266,8 @@ function App() {
     const newSchedules = schedules.map(s => 
       s.id === scheduleId ? { ...s, hasBeenConfirmed: true } : s
     );
-    setDoc(getStateDocRef(), { waitingPool, schedules: newSchedules, individualMembers }, { merge: true });
+    const target = schedules.find(s => s.id === scheduleId);
+    commitStateToFirebase(waitingPool, newSchedules, individualMembers, `[${target?.title}] 스케줄 강제 확정`);
   };
 
   const handleAddSchedule = (e) => {
@@ -236,7 +284,7 @@ function App() {
     };
 
     const newSchedules = [...schedules, newSchedule];
-    setDoc(getStateDocRef(), { waitingPool, schedules: newSchedules, individualMembers }, { merge: true });
+    commitStateToFirebase(waitingPool, newSchedules, individualMembers, `새 스케줄 [${newScheduleTitle}] 생성`);
     
     setNewScheduleTitle('');
     setIsModalOpen(false);
@@ -290,12 +338,10 @@ function App() {
   return (
     <div className="min-h-screen flex flex-col font-sans select-none relative overflow-x-hidden">
       
-      {/* 🌟 1. 전체 바깥 배경색 레이어 (가장 밑바닥 z-[-3]) */}
       <div className={`fixed inset-0 transition-colors duration-700 ease-in-out z-[-3] ${
         activeTab === 'Working Day' ? 'bg-slate-900' : 'bg-orange-50'
       }`} />
 
-      {/* 🌟 2. 그림 배경 레이어 (어플 사이즈 max-w-lg에 맞추고 투명도 35%로 조정) */}
       <div className="fixed inset-0 flex justify-center z-[-2] pointer-events-none">
         <div 
           className="w-full max-w-lg h-full bg-cover bg-center bg-no-repeat transition-all duration-700 ease-in-out opacity-[0.35]"
@@ -303,7 +349,6 @@ function App() {
         />
       </div>
       
-      {/* 🌟 3. 텍스트 가독성을 위한 부드러운 오버레이 레이어 */}
       <div className="fixed inset-0 flex justify-center z-[-1] pointer-events-none">
         <div className={`w-full max-w-lg h-full transition-colors duration-700 ease-in-out ${
           activeTab === 'Working Day' ? 'bg-slate-900/40' : 'bg-white/30'
@@ -353,6 +398,20 @@ function App() {
           }`}>
           🌴 Weekend
         </button>
+        
+        {/* 전체 로그 확인 버튼 */}
+        <div className="absolute right-3 top-2.5 z-30">
+          <button 
+            onClick={() => setIsLogModalOpen(true)}
+            className="p-1.5 bg-white/60 backdrop-blur-md text-slate-700 hover:bg-white/90 rounded-lg transition-all relative shadow-sm border border-white/40"
+            title="전체 최근 변경 이력"
+          >
+            <History size={16} />
+            {systemLogs.length > 0 && (
+              <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-blue-500 rounded-full"></span>
+            )}
+          </button>
+        </div>
       </div>
 
       <main className="flex-1 w-full max-w-lg mx-auto p-3 flex flex-col gap-4 mb-36 relative z-10">
@@ -458,10 +517,30 @@ function App() {
         </div>
       </main>
 
+      {/* 대기 멤버 풀 (아무도 모르게 10번 연속 탭하면 내 번호 모달 오픈) */}
       <div 
-        onClick={() => selectedMember && handleMoveMemberTo('pool')}
-        className={`fixed bottom-0 left-0 right-0 bg-white/60 backdrop-blur-xl border-t border-white/40 p-3 shadow-lg z-10 transition-all ${
-          selectedMember ? 'border-blue-400 ring-4 ring-blue-300/50 bg-blue-50/80 cursor-pointer' : ''
+        onClick={() => {
+          if (selectedMember) {
+            handleMoveMemberTo('pool');
+            return;
+          }
+
+          setPoolTapCount(prev => {
+            const nextCount = prev + 1;
+            if (poolTapTimerRef.current) clearTimeout(poolTapTimerRef.current);
+            poolTapTimerRef.current = setTimeout(() => {
+              setPoolTapCount(0);
+            }, 500);
+
+            if (nextCount >= 10) {
+              setIsMyInfoModalOpen(true);
+              return 0;
+            }
+            return nextCount;
+          });
+        }}
+        className={`fixed bottom-0 left-0 right-0 bg-white/60 backdrop-blur-xl border-t border-white/40 p-3 shadow-lg z-10 transition-all cursor-pointer ${
+          selectedMember ? 'border-blue-400 ring-4 ring-blue-300/50 bg-blue-50/80' : ''
         }`}
       >
         <div className="max-w-lg mx-auto flex flex-col gap-1.5">
@@ -511,6 +590,59 @@ function App() {
                 등록하기
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* 전체 최근 변경 이력 로그 모달 */}
+      {isLogModalOpen && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white/95 backdrop-blur-md rounded-2xl w-full max-w-md p-4 shadow-xl flex flex-col max-h-[80vh]">
+            <div className="flex justify-between items-center mb-3 pb-2 border-b">
+              <h2 className="text-sm font-bold text-slate-800">📋 전체 최근 변경 이력 (최대 100개)</h2>
+              <button onClick={() => setIsLogModalOpen(false)} className="text-slate-500 hover:text-slate-800">
+                <X size={18} />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto flex flex-col gap-2 pr-1">
+              {systemLogs.length === 0 && (
+                <span className="text-xs text-slate-400 text-center py-6">기록된 이력이 없습니다.</span>
+              )}
+              {systemLogs.map((log, idx) => (
+                <div key={idx} className="bg-slate-50 border border-slate-200/80 rounded-lg p-2 text-xs flex flex-col gap-1">
+                  <div className="flex justify-between items-center text-[10px] text-slate-400 font-semibold">
+                    <span>사용자 ID: #{log.userNo}</span>
+                    <span>{log.time}</span>
+                  </div>
+                  <div className="text-slate-700 font-medium">{log.text}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 내 사용자 번호 확인 모달 (비밀 10연타로만 진입) */}
+      {isMyInfoModalOpen && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white/95 backdrop-blur-md rounded-2xl w-full max-w-xs p-5 shadow-xl flex flex-col items-center text-center gap-3">
+            <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-xl mb-1 shadow-inner">
+              🔑
+            </div>
+            <h2 className="text-base font-bold text-slate-800">내 시스템 사용자 번호</h2>
+            <div className="bg-slate-100 border border-slate-200 rounded-xl px-4 py-2 w-full">
+              <span className="text-xl font-black text-blue-600 tracking-widest">#{myUserNo}</span>
+            </div>
+            <p className="text-[11px] text-slate-500 leading-relaxed">
+              이 번호는 브라우저에 자동 저장되어 시스템 변경 이력에 기록됩니다.
+            </p>
+            <button 
+              onClick={() => setIsMyInfoModalOpen(false)}
+              className="w-full bg-slate-800 text-white font-bold py-2 rounded-xl text-xs mt-2"
+            >
+              확인
+            </button>
           </div>
         </div>
       )}
