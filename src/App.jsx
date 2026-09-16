@@ -531,7 +531,7 @@ function App() {
             if (poolTapTimerRef.current) clearTimeout(poolTapTimerRef.current);
             poolTapTimerRef.current = setTimeout(() => {
               setPoolTapCount(0);
-            }, 500);
+            }, 2000);
 
             if (nextCount >= 10) {
               setIsMyInfoModalOpen(true);
