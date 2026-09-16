@@ -20,7 +20,7 @@ const INITIAL_POOL = [
 ];
 
 const INITIAL_SCHEDULES = [];
-const TOTAL_KEYS_FIXED = 4; // 전체 시스템에 존재하는 고정된 총 열쇠 개수
+const TOTAL_KEYS_FIXED = 4; // 전체 시스템 고정 총 열쇠 개수
 
 function App() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -49,14 +49,17 @@ function App() {
   const [isMyInfoModalOpen, setIsMyInfoModalOpen] = useState(false);
   const [newScheduleTitle, setNewScheduleTitle] = useState('');
 
-  // 10번 탭 감지용 상태 및 레퍼런스 (화면 표시 없음)
+  // 10번 탭 감지용 상태 및 레퍼런스
   const [poolTapCount, setPoolTapCount] = useState(0);
   const poolTapTimerRef = useRef(null);
 
   const lastTapRef = useRef({ id: null, time: 0 });
 
+  // 탭이 바뀔 때마다 로컬 스토리지 저장 및 선택 상태 강제 초기화 (키 꼬임 방지)
   useEffect(() => {
     localStorage.setItem('transferWith_activeTab', activeTab);
+    setSelectedMember(null);
+    setKeySenderMember(null);
   }, [activeTab]);
 
   const getStateDocRef = () => {
@@ -79,7 +82,7 @@ function App() {
           waitingPool: INITIAL_POOL,
           schedules: INITIAL_SCHEDULES,
           individualMembers: [],
-          systemLogs: [{ text: '시스템이 초기화되었습니다.', time: new Date().toLocaleTimeString(), userNo: 'System' }]
+          systemLogs: [{ text: `${activeTab} 시스템이 초기화되었습니다.`, time: new Date().toLocaleTimeString(), userNo: 'System' }]
         });
       }
     });
@@ -109,7 +112,7 @@ function App() {
     }
 
     const newLogEntry = {
-      text: logDescription,
+      text: `[${activeTab}] ${logDescription}`,
       time: new Date().toLocaleTimeString(),
       userNo: myUserNo
     };
@@ -399,7 +402,6 @@ function App() {
           🌴 Weekend
         </button>
         
-        {/* 전체 로그 확인 버튼 */}
         <div className="absolute right-3 top-2.5 z-30">
           <button 
             onClick={() => setIsLogModalOpen(true)}
@@ -517,7 +519,6 @@ function App() {
         </div>
       </main>
 
-      {/* 대기 멤버 풀 (아무도 모르게 10번 연속 탭하면 내 번호 모달 오픈) */}
       <div 
         onClick={() => {
           if (selectedMember) {
@@ -594,7 +595,6 @@ function App() {
         </div>
       )}
 
-      {/* 전체 최근 변경 이력 로그 모달 */}
       {isLogModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white/95 backdrop-blur-md rounded-2xl w-full max-w-md p-4 shadow-xl flex flex-col max-h-[80vh]">
@@ -623,7 +623,6 @@ function App() {
         </div>
       )}
 
-      {/* 내 사용자 번호 확인 모달 (비밀 10연타로만 진입) */}
       {isMyInfoModalOpen && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white/95 backdrop-blur-md rounded-2xl w-full max-w-xs p-5 shadow-xl flex flex-col items-center text-center gap-3">
