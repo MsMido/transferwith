@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, X, Check, History } from 'lucide-react';
+import { Plus, X, Check } from 'lucide-react';
 import { db } from './firebase/firebase';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 
@@ -45,17 +45,15 @@ function App() {
   const [keySenderMember, setKeySenderMember] = useState(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [isMyInfoModalOpen, setIsMyInfoModalOpen] = useState(false);
   const [newScheduleTitle, setNewScheduleTitle] = useState('');
 
-  // 10번 탭 감지용 상태 및 레퍼런스
+  // 대기 멤버 풀 10번 탭 감지용 상태 및 레퍼런스 (인식 시간 2초로 넉넉하게 조정)
   const [poolTapCount, setPoolTapCount] = useState(0);
   const poolTapTimerRef = useRef(null);
 
   const lastTapRef = useRef({ id: null, time: 0 });
 
-  // 탭이 바뀔 때마다 로컬 스토리지 저장 및 선택 상태 강제 초기화 (키 꼬임 방지)
   useEffect(() => {
     localStorage.setItem('transferWith_activeTab', activeTab);
     setSelectedMember(null);
@@ -401,19 +399,6 @@ function App() {
           }`}>
           🌴 Weekend
         </button>
-        
-        <div className="absolute right-3 top-2.5 z-30">
-          <button 
-            onClick={() => setIsLogModalOpen(true)}
-            className="p-1.5 bg-white/60 backdrop-blur-md text-slate-700 hover:bg-white/90 rounded-lg transition-all relative shadow-sm border border-white/40"
-            title="전체 최근 변경 이력"
-          >
-            <History size={16} />
-            {systemLogs.length > 0 && (
-              <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-blue-500 rounded-full"></span>
-            )}
-          </button>
-        </div>
       </div>
 
       <main className="flex-1 w-full max-w-lg mx-auto p-3 flex flex-col gap-4 mb-36 relative z-10">
@@ -519,6 +504,7 @@ function App() {
         </div>
       </main>
 
+      {/* 대기 멤버 풀 (숨김 10연타 시 내 번호 모달 오픈) */}
       <div 
         onClick={() => {
           if (selectedMember) {
@@ -591,34 +577,6 @@ function App() {
                 등록하기
               </button>
             </form>
-          </div>
-        </div>
-      )}
-
-      {isLogModalOpen && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white/95 backdrop-blur-md rounded-2xl w-full max-w-md p-4 shadow-xl flex flex-col max-h-[80vh]">
-            <div className="flex justify-between items-center mb-3 pb-2 border-b">
-              <h2 className="text-sm font-bold text-slate-800">📋 전체 최근 변경 이력 (최대 100개)</h2>
-              <button onClick={() => setIsLogModalOpen(false)} className="text-slate-500 hover:text-slate-800">
-                <X size={18} />
-              </button>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto flex flex-col gap-2 pr-1">
-              {systemLogs.length === 0 && (
-                <span className="text-xs text-slate-400 text-center py-6">기록된 이력이 없습니다.</span>
-              )}
-              {systemLogs.map((log, idx) => (
-                <div key={idx} className="bg-slate-50 border border-slate-200/80 rounded-lg p-2 text-xs flex flex-col gap-1">
-                  <div className="flex justify-between items-center text-[10px] text-slate-400 font-semibold">
-                    <span>사용자 ID: #{log.userNo}</span>
-                    <span>{log.time}</span>
-                  </div>
-                  <div className="text-slate-700 font-medium">{log.text}</div>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
       )}
